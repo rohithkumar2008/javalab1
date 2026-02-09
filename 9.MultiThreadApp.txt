@@ -1,0 +1,118 @@
+import java.util.Random;
+
+// Shared resource
+class Number {
+    int num;
+    boolean valueSet = false;
+    int count = 0;         // How many numbers generated
+    final int LIMIT = 5;  // Stop after 10
+}
+
+// Thread 1: Generator
+class Generator extends Thread {
+    Number n;
+    Random r = new Random();
+
+    Generator(Number n) {
+        this.n = n;
+    }
+
+    public void run() {
+        try {
+            while (true) {
+                synchronized (n) {
+                    if (n.count >= n.LIMIT) {
+                        n.notifyAll();
+                        break;
+                    }
+
+                    n.num = r.nextInt(100);
+                    n.count++;
+                    System.out.println("\nGenerated Number: " + n.num);
+                    n.valueSet = true;
+                    n.notifyAll();
+                }
+                Thread.sleep(1000);
+            }
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
+    }
+}
+
+// Thread 2: Square
+class Square extends Thread {
+    Number n;
+
+    Square(Number n) {
+        this.n = n;
+    }
+
+    public void run() {
+        try {
+            while (true) {
+                synchronized (n) {
+                    while (!n.valueSet && n.count < n.LIMIT)
+                        n.wait();
+
+                    if (n.count >= n.LIMIT && !n.valueSet)
+                        break;
+
+                    if (n.num % 2 == 0) {
+                        System.out.println("Square of " + n.num + " = " + (n.num * n.num));
+                        n.valueSet = false;
+                        n.notifyAll();
+                    }
+                }
+            }
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
+    }
+}
+
+// Thread 3: Cube
+class Cube extends Thread {
+    Number n;
+
+    Cube(Number n) {
+        this.n = n;
+    }
+
+    public void run() {
+        try {
+            while (true) {
+                synchronized (n) {
+                    while (!n.valueSet && n.count < n.LIMIT)
+                        n.wait();
+
+                    if (n.count >= n.LIMIT && !n.valueSet)
+                        break;
+
+                    if (n.num % 2 != 0) {
+                        System.out.println("Cube of " + n.num + " = " + (n.num * n.num * n.num));
+                        n.valueSet = false;
+                        n.notifyAll();
+                    }
+                }
+            }
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
+    }
+}
+
+// Main class
+public class MultiThreadApp {
+    public static void main(String[] args) {
+        Number num = new Number();
+
+        Generator t1 = new Generator(num);
+        Square t2 = new Square(num);
+        Cube t3 = new Cube(num);
+
+        t1.start();
+        t2.start();
+        t3.start();
+    }
+} 
